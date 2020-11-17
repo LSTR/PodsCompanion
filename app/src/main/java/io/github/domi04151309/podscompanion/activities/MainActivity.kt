@@ -49,10 +49,10 @@ class MainActivity : AppCompatActivity(),
             .replace(R.id.settings, PreferenceFragment())
             .commit()
 
-//        ContextCompat.startForegroundService(this, Intent(this, PodsService::class.java))
-        podsHelper = PodsHelper(this)
-        podsHelper?.onCreate()
-        podsHelper?.onStartCommand()
+        ContextCompat.startForegroundService(this, Intent(this, PodsService::class.java))
+  //      podsHelper = PodsHelper(this)
+ //       podsHelper?.onCreate()
+ //       podsHelper?.onStartCommand()
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
     }
