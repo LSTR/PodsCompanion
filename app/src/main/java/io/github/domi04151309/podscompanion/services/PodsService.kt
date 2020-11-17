@@ -91,7 +91,7 @@ class PodsService : Service() {
                         try {
                             val data = result.scanRecord?.getManufacturerSpecificData(76)
                             if (data == null || data.size != 27) {
-                                Log.d(TAG, "data null? ${data?.size ?: -1}")
+                                Log.d(TAG, "data ${result.device.name}? ${data?.size ?: -1}")
                                 return
                             }
                             recentBeacons.add(result)
@@ -165,7 +165,7 @@ class PodsService : Service() {
             manufacturerDataMask[0] = -1
             manufacturerDataMask[1] = -1
             val builder = ScanFilter.Builder()
-            builder.setManufacturerData(76, manufacturerData, manufacturerDataMask)
+//            builder.setManufacturerData(76, manufacturerData, manufacturerDataMask)
             return listOf(builder.build())
         }
 
