@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Pods Companion</string>
+    <string name="app_name">AirPods</string>
     <string name="app_by">Pods Companion by Domi04151309\nBased on <a href="https://github.com/adolfintel/OpenPods">OpenPods</a> by Federico Dossena</string>
 
     <string name="service_text">Pods Companion is running in the background</string>

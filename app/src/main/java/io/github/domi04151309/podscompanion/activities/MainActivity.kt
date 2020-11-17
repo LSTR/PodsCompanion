@@ -15,6 +15,7 @@ import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
 import io.github.domi04151309.podscompanion.R
 import io.github.domi04151309.podscompanion.custom.BatteryPreference
+import io.github.domi04151309.podscompanion.helpers.PodsHelper
 import io.github.domi04151309.podscompanion.helpers.Theme
 import io.github.domi04151309.podscompanion.services.PodsService
 import io.github.domi04151309.podscompanion.services.PodsService.Companion.status
@@ -25,6 +26,8 @@ class MainActivity : AppCompatActivity(),
     companion object {
         private const val PREF_THEME = "theme"
     }
+
+    var podsHelper: PodsHelper? = null
 
     private lateinit var prefs: SharedPreferences
     private val prefsChangedListener =
@@ -46,7 +49,10 @@ class MainActivity : AppCompatActivity(),
             .replace(R.id.settings, PreferenceFragment())
             .commit()
 
-        ContextCompat.startForegroundService(this, Intent(this, PodsService::class.java))
+//        ContextCompat.startForegroundService(this, Intent(this, PodsService::class.java))
+        podsHelper = PodsHelper(this)
+        podsHelper?.onCreate()
+        podsHelper?.onStartCommand()
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
     }
@@ -65,6 +71,7 @@ class MainActivity : AppCompatActivity(),
         super.onStop()
 
         prefs.unregisterOnSharedPreferenceChangeListener(prefsChangedListener)
+        podsHelper?.onDestroy()
     }
 
     override fun onPreferenceStartFragment(caller: PreferenceFragmentCompat, pref: Preference): Boolean {

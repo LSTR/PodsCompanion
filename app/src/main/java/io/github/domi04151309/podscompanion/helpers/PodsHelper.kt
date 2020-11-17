@@ -1,8 +1,7 @@
-package io.github.domi04151309.podscompanion.services
+package io.github.domi04151309.podscompanion.helpers
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.Service
 import android.appwidget.AppWidgetManager
 import android.bluetooth.*
 import android.bluetooth.BluetoothProfile.ServiceListener
@@ -20,7 +19,6 @@ import androidx.preference.PreferenceManager
 import io.github.domi04151309.podscompanion.R
 import io.github.domi04151309.podscompanion.activities.PopUpActivity
 import io.github.domi04151309.podscompanion.data.Status
-import io.github.domi04151309.podscompanion.helpers.NotificationHelper
 import io.github.domi04151309.podscompanion.receivers.StatusWidgetReceiver
 import java.util.*
 
@@ -30,7 +28,7 @@ import java.util.*
  * - Receive beacons from AirPods and decode them (easier said than done thanks to google's autism)
  * - Send broadcasts with the status
  */
-class PodsService : Service() {
+class PodsHelper(val context: Context) {
 
     private var btScanner: BluetoothLeScanner? = null
     internal val recentBeacons = ArrayList<ScanResult>()
@@ -71,7 +69,7 @@ class PodsService : Service() {
     internal fun startAirPodsScanner() {
         try {
             if (ENABLE_LOGGING) Log.d(TAG, "START SCANNER")
-            val btAdapter = (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
+            val btAdapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
             btScanner = btAdapter.bluetoothLeScanner
             if (!btAdapter.isEnabled) throw Exception("BT Off")
             btScanner?.startScan(
@@ -200,6 +198,9 @@ class PodsService : Service() {
      *
      * This thread is the reason why we need permission to disable doze. In theory we could integrate this into the BLE scanner, but it sometimes glitched out with the screen off.
      */
+
+
+
     private inner class BackgroundThread : Thread() {
         override fun run() {
             status.available = false
@@ -210,10 +211,10 @@ class PodsService : Service() {
                         if (ENABLE_LOGGING) Log.d(TAG, "Started sending status")
                         status.available = true
                         notificationHelper.updateNotification()
-                        if (PreferenceManager.getDefaultSharedPreferences(applicationContext)
+                        if (PreferenceManager.getDefaultSharedPreferences(context)
                                 .getBoolean(PREF_SHOW_POP_UP, PREF_SHOW_POP_UP_DEFAULT)) {
-                            startActivity(
-                                Intent(applicationContext, PopUpActivity::class.java).setFlags(
+                            context.startActivity(
+                                Intent(context, PopUpActivity::class.java).setFlags(
                                     Intent.FLAG_ACTIVITY_NEW_TASK
                                 )
                             )
@@ -235,10 +236,6 @@ class PodsService : Service() {
                 } catch (ignored: InterruptedException) { }
             }
         }
-    }
-
-    override fun onBind(intent: Intent): IBinder? {
-        return null
     }
 
     internal fun sendBatteryStatus(force: Boolean = false) {
@@ -268,11 +265,10 @@ class PodsService : Service() {
      * When the service is created, we register to get as many bluetooth and AirPods related events as possible.
      * ACL_CONNECTED and ACL_DISCONNECTED should have been enough, but you never know with android these days.
      */
-    override fun onCreate() {
-        super.onCreate()
-
-        localBroadcastManager = LocalBroadcastManager.getInstance(applicationContext)
-        notificationHelper = NotificationHelper(applicationContext)
+//    override
+    fun onCreate() {
+        localBroadcastManager = LocalBroadcastManager.getInstance(context)
+        notificationHelper = NotificationHelper(context)
 
         val intentFilter = IntentFilter()
         intentFilter.addAction("android.bluetooth.device.action.ACL_CONNECTED")
@@ -330,12 +326,12 @@ class PodsService : Service() {
                 }
             }
         }
-        registerReceiver(btReceiver, intentFilter)
+        context.registerReceiver(btReceiver, intentFilter)
 
         // This BT Profile Proxy allows us to know if AirPods are already connected when the app is started.
         // It also fires an event when BT is turned off, in case the BroadcastReceiver doesn't do its job
-        val ba = (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter
-        ba.getProfileProxy(applicationContext, object : ServiceListener {
+        val ba = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+        ba.getProfileProxy(context, object : ServiceListener {
             override fun onServiceConnected(i: Int, bluetoothProfile: BluetoothProfile) {
                 if (i == BluetoothProfile.HEADSET) {
                     if (ENABLE_LOGGING) Log.d(TAG, "BT PROXY SERVICE CONNECTED")
@@ -379,51 +375,55 @@ class PodsService : Service() {
         return false
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        backgroundThread?.interrupt()
+//    override
+    fun onDestroy() {
+        if (backgroundThread != null){
+            backgroundThread?.interrupt()
+            backgroundThread = null
+        }
         notificationHelper.onDestroy()
-        unregisterReceiver(btReceiver)
+        context.unregisterReceiver(btReceiver)
         localBroadcastManager.unregisterReceiver(requestReceiver)
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+//    override
+    fun onStartCommand() {
         createNotificationChannel()
-        startForeground(
-            1,
-            NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentText(getString(R.string.service_text))
-                .setSmallIcon(R.drawable.ic_pods_white)
-                .setColor(ContextCompat.getColor(this, R.color.colorAccent))
-                .setShowWhen(false)
-                .build()
-        )
+//        context.startForeground(
+//            1,
+//            NotificationCompat.Builder(this, CHANNEL_ID)
+//                .setContentText(context.getString(R.string.service_text))
+//                .setSmallIcon(R.drawable.ic_pods_white)
+//                .setColor(ContextCompat.getColor(this, R.color.colorAccent))
+//                .setShowWhen(false)
+//                .build()
+//        )
         if (backgroundThread == null || backgroundThread?.isAlive == false) {
             backgroundThread = BackgroundThread()
             backgroundThread?.start()
         }
-        return START_REDELIVER_INTENT
+//        return START_REDELIVER_INTENT
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                resources.getString(R.string.service_channel),
+                context.resources.getString(R.string.service_channel),
                 NotificationManager.IMPORTANCE_LOW
             )
             channel.setShowBadge(false)
-            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+            context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
 
     private fun updateWidgets() {
-        sendBroadcast(
+        context.sendBroadcast(
             Intent()
                 .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
-                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, AppWidgetManager.getInstance(applicationContext).getAppWidgetIds(
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, AppWidgetManager.getInstance(context).getAppWidgetIds(
                     ComponentName(
-                        applicationContext,
+                        context,
                         StatusWidgetReceiver::class.java
                     )
                 ))
